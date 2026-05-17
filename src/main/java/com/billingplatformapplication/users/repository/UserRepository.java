@@ -25,14 +25,16 @@ public interface UserRepository extends JpaRepository<UserEntity, UUID> {
             "WHERE LOWER(u.email) = LOWER(:email)")
     Optional<UserEntity> findByEmailWithRolesAndPermissions(@Param("email") String email);
 
-    @Query("SELECT u FROM UserEntity u WHERE " +
-            "(:search IS NULL " +
-            " OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :search, '%')) " +
-            " OR LOWER(u.email)    LIKE LOWER(CONCAT('%', :search, '%'))) " +
+    @Query("SELECT u FROM UserEntity u " +
+            "LEFT JOIN FETCH u.roles " +
+            "WHERE (:search IS NULL " +
+            " OR LOWER(u.fullName) LIKE :searchPattern " +
+            " OR LOWER(u.email)    LIKE :searchPattern) " +
             "AND (:status IS NULL OR u.status = :status)")
     Page<UserEntity> findAllWithFilters(
-            @Param("search") String search,
-            @Param("status") UserEntity.UserStatus status,
+            @Param("search")        String search,
+            @Param("searchPattern") String searchPattern,
+            @Param("status")        UserEntity.UserStatus status,
             Pageable pageable);
 }
 

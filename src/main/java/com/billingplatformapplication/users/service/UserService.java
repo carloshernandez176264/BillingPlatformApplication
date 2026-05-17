@@ -45,8 +45,12 @@ public class UserService {
         if (status != null && !status.isBlank()) {
             statusEnum = UserEntity.UserStatus.valueOf(status.toUpperCase());
         }
+
+        String searchParam   = (search == null || search.isBlank()) ? null : search.trim();
+        String searchPattern = searchParam != null ? "%" + searchParam.toLowerCase() + "%" : null;
+
         return PageResponseDto.from(
-                userRepository.findAllWithFilters(search, statusEnum, pageable)
+                userRepository.findAllWithFilters(searchParam, searchPattern, statusEnum, pageable)
                         .map(userMapper::toDto));
     }
 
