@@ -3,31 +3,30 @@ package com.billingplatformapplication.preinvoices.builder;
 import com.billingplatformapplication.billing.dto.BillingLineDto;
 import com.billingplatformapplication.client.entity.ClientEntity;
 import com.billingplatformapplication.currencies.entity.CurrencyEntity;
+import com.billingplatformapplication.developers.repository.DeveloperRepository;
+import com.billingplatformapplication.developerprofiles.repository.DeveloperProfileRepository;
 import com.billingplatformapplication.preinvoices.entity.PreInvoiceEntity;
 import com.billingplatformapplication.preinvoices.entity.PreInvoiceItemEntity;
-import com.billingplatformapplication.shared.exception.ResourceNotFoundException;
 import com.billingplatformapplication.worklogs.entity.WorkLogEntity;
 import com.billingplatformapplication.worklogs.repository.WorkLogRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/**
- * Builder pattern for PreInvoiceEntity.
- * Encapsulates the assembly logic so PreInvoiceService stays clean.
- */
 @Component
 @RequiredArgsConstructor
 public class PreInvoiceBuilder {
 
-    private final WorkLogRepository workLogRepository;
+    private final WorkLogRepository         workLogRepository;
+    private final DeveloperRepository       developerRepository;
+    private final DeveloperProfileRepository profileRepository;
 
     public PreInvoiceEntity build(String invoiceNumber,
                                   ClientEntity client,
@@ -35,8 +34,10 @@ public class PreInvoiceBuilder {
                                   int year, int month,
                                   List<BillingLineDto> lines,
                                   String observations) {
+
         String periodDesc = LocalDate.of(year, month, 1)
-                .getMonth().getDisplayName(TextStyle.FULL, Locale.ENGLISH) + " " + year;
+                .getMonth().getDisplayName(TextStyle.FULL, Locale.forLanguageTag("es-CO"))
+                + " " + year;
 
         PreInvoiceEntity invoice = PreInvoiceEntity.builder()
                 .invoiceNumber(invoiceNumber)
@@ -53,19 +54,18 @@ public class PreInvoiceBuilder {
 
         invoice.setSubtotal(lines.stream()
                 .map(BillingLineDto::getGrossAmount)
-                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add));
+                .reduce(BigDecimal.ZERO, BigDecimal::add));
         invoice.setTotalNoveltyDiscounts(lines.stream()
                 .map(BillingLineDto::getNoveltyDiscount)
-                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add));
-        invoice.setTotalOtherDiscounts(java.math.BigDecimal.ZERO);
+                .reduce(BigDecimal.ZERO, BigDecimal::add));
+        invoice.setTotalOtherDiscounts(BigDecimal.ZERO);
         invoice.setTaxableAmount(invoice.getSubtotal()
                 .subtract(invoice.getTotalNoveltyDiscounts())
-                .max(java.math.BigDecimal.ZERO));
-        invoice.setTaxAmount(java.math.BigDecimal.ZERO);
+                .max(BigDecimal.ZERO));
+        invoice.setTaxAmount(BigDecimal.ZERO);
         invoice.setTotalAmount(invoice.getTaxableAmount());
 
-        List<PreInvoiceItemEntity> items = buildItems(lines, invoice);
-        invoice.setItems(items);
+        invoice.setItems(buildItems(lines, invoice));
         return invoice;
     }
 
@@ -75,15 +75,25 @@ public class PreInvoiceBuilder {
         AtomicInteger order = new AtomicInteger(1);
 
         for (BillingLineDto line : lines) {
-            WorkLogEntity wl = workLogRepository.findById(line.getWorkLogId())
-                    .orElseThrow(() -> new ResourceNotFoundException("WorkLog", line.getWorkLogId()));
+
+            // workLog es OPCIONAL — puede ser null si no hay registro de horas
+            WorkLogEntity workLog = null;
+            if (line.getWorkLogId() != null) {
+                workLog = workLogRepository.findById(line.getWorkLogId()).orElse(null);
+            }
+
+            // Developer y perfil — los buscamos directamente por ID
+            var developer = developerRepository.findById(line.getDeveloperId())
+                    .orElseThrow(() -> new RuntimeException(
+                            "Developer not found: " + line.getDeveloperId()));
+
+            var profile = developer.getProfile();
 
             items.add(PreInvoiceItemEntity.builder()
                     .preInvoice(invoice)
-                    .workLog(wl)
-                    .developer(wl.getDeveloper())
-                    .developerProfile(wl.getDeveloperProfile())
-                    .rate(wl.getAppliedRate())
+                    .workLog(workLog)                    // puede ser null
+                    .developer(developer)
+                    .developerProfile(profile)
                     .rateType(line.getRateType())
                     .rateValue(line.getRateValue())
                     .billedHours(line.getBilledHours())
@@ -92,8 +102,9 @@ public class PreInvoiceBuilder {
                     .noveltyDiscount(line.getNoveltyDiscount())
                     .otherDiscount(line.getOtherDiscount())
                     .netAmount(line.getNetAmount())
-                    .lineDescription(String.format("%s — %s — %.2f h",
-                            line.getProfileName(), line.getDeveloperName(),
+                    .lineDescription(String.format("%s — %s — %.0f h",
+                            line.getProfileName(),
+                            line.getDeveloperName(),
                             line.getBilledHours()))
                     .sortOrder(order.getAndIncrement())
                     .build());
@@ -101,4 +112,3 @@ public class PreInvoiceBuilder {
         return items;
     }
 }
-

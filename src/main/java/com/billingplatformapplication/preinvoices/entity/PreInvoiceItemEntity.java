@@ -32,7 +32,7 @@ public class PreInvoiceItemEntity {
     private PreInvoiceEntity preInvoice;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "work_log_id", nullable = false)
+    @JoinColumn(name = "work_log_id", nullable = true)
     private WorkLogEntity workLog;
 
     @ManyToOne(fetch = FetchType.LAZY)

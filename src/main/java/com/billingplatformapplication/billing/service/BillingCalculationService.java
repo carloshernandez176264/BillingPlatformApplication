@@ -188,6 +188,13 @@ public class BillingCalculationService {
 
     private BillingCalculationResultDto assembleResult(UUID clientId, int year, int month,
                                                        List<BillingLineDto> lines) {
+        // Obtener nombre del cliente
+        String clientName = assignmentRepository
+                .findActiveByClientWithDeveloper(clientId)
+                .stream().findFirst()
+                .map(a -> a.getClient().getCompanyName())
+                .orElse("");
+
         BigDecimal subtotal = lines.stream()
                 .map(BillingLineDto::getGrossAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -203,6 +210,7 @@ public class BillingCalculationService {
 
         return BillingCalculationResultDto.builder()
                 .clientId(clientId)
+                .clientName(clientName)
                 .billingYear(year)
                 .billingMonth(month)
                 .lines(lines)

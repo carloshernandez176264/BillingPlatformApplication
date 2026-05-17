@@ -1,7 +1,5 @@
 package com.billingplatformapplication.preinvoices.service;
 
-
-
 import com.billingplatformapplication.audit.service.AuditService;
 import com.billingplatformapplication.billing.dto.BillingCalculationResultDto;
 import com.billingplatformapplication.billing.service.BillingCalculationService;

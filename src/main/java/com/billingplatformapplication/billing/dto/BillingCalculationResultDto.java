@@ -13,6 +13,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class BillingCalculationResultDto {
     private UUID             clientId;
+    private String           clientName;
     private int              billingYear;
     private int              billingMonth;
     private List<BillingLineDto> lines;
