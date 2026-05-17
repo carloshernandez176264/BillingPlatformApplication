@@ -1,0 +1,15 @@
+package com.billingplatformapplication.permissions.repository;
+
+
+import com.billingplatformapplication.permissions.entity.PermissionEntity;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
+import java.util.UUID;
+
+@Repository
+public interface PermissionRepository extends JpaRepository<PermissionEntity, UUID> {
+    Optional<PermissionEntity> findByName(String name);
+    boolean existsByName(String name);
+}
