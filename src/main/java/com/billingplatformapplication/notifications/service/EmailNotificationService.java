@@ -4,6 +4,7 @@ package com.billingplatformapplication.notifications.service;
 import com.billingplatformapplication.preinvoices.dto.response.PreInvoiceResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Async;
@@ -11,10 +12,11 @@ import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
+
 public class EmailNotificationService {
 
-    private final JavaMailSender mailSender;
+    @Autowired(required = false)
+    private JavaMailSender mailSender;
 
     @Async
     public void sendPreInvoice(PreInvoiceResponseDto invoice) {

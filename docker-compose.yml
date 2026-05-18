@@ -1,24 +1,20 @@
 version: '3.9'
 
 services:
-  # =============================================
-  # PostgreSQL
-  # =============================================
   postgres:
     image: postgres:15-alpine
     container_name: billing_postgres
     environment:
-      POSTGRES_DB: ${DB_NAME:-billing_dev}
+      POSTGRES_DB: ${DB_NAME:-billing_prod}
       POSTGRES_USER: ${DB_USERNAME:-billing_user}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-billing_pass}
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./docker/postgres/init:/docker-entrypoint-initdb.d
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-billing_user} -d ${DB_NAME:-billing_dev}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-billing_user} -d ${DB_NAME:-billing_prod}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -26,63 +22,51 @@ services:
     networks:
       - billing_network
 
-  # =============================================
-  # Backend Spring Boot
-  # =============================================
   backend:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: billing_backend
     environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_NAME: ${DB_NAME:-billing_dev}
+      DB_NAME: ${DB_NAME:-billing_prod}
       DB_USERNAME: ${DB_USERNAME:-billing_user}
       DB_PASSWORD: ${DB_PASSWORD:-billing_pass}
       JWT_SECRET: ${JWT_SECRET}
       JWT_ACCESS_EXPIRATION: ${JWT_ACCESS_EXPIRATION:-900000}
       JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-604800000}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:4200}
-      MAIL_HOST: ${MAIL_HOST:-}
-      MAIL_USERNAME: ${MAIL_USERNAME:-}
-      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:80}
     ports:
-      - "${BACKEND_PORT:-8080}:8080"
+      - "8081:8081"
     depends_on:
       postgres:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null",
-             "http://localhost:8080/actuator/health"]
+             "http://localhost:8081/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 60s
+      start_period: 120s
     restart: unless-stopped
     networks:
       - billing_network
 
-  # =============================================
-  # Frontend Angular (opcional en dev)
-  # =============================================
   frontend:
     build:
-      context: ./frontend
+      context: ../billing-frontend
       dockerfile: Dockerfile
     container_name: billing_frontend
     ports:
-      - "${FRONTEND_PORT:-4200}:80"
+      - "80:80"
     depends_on:
       - backend
     restart: unless-stopped
     networks:
       - billing_network
 
-  # =============================================
-  # PgAdmin (solo dev)
-  # =============================================
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: billing_pgadmin
@@ -90,7 +74,7 @@ services:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@billing.local}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-pgadmin123}
     ports:
-      - "${PGADMIN_PORT:-5050}:80"
+      - "5050:80"
     profiles:
       - dev-tools
     networks:
