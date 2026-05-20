@@ -63,6 +63,13 @@ public class ClientController {
         return ResponseEntity.ok(clientService.update(id, request));
     }
 
+    @PatchMapping("/{id}/activate")
+    @PreAuthorize("hasAuthority('UPDATE_CLIENT')")
+    @Operation(summary = "Activate client")
+    public ResponseEntity<ClientResponseDto> activate(@PathVariable UUID id) {
+        return ResponseEntity.ok(clientService.activate(id));
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('DELETE_CLIENT')")
     @Operation(summary = "Deactivate client — soft delete")

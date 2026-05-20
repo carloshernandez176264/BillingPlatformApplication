@@ -85,6 +85,16 @@ public class ClientService {
     }
 
     @Transactional
+    public ClientResponseDto activate(UUID id) {
+        ClientEntity entity = findEntityById(id);
+        entity.setActive(true);
+        entity.setStatus(ClientEntity.ClientStatus.ACTIVE);
+        clientRepository.save(entity);
+        auditService.log("CLIENT", id.toString(), "ACTIVATE", currentUser(), null, null);
+        return clientMapper.toDto(entity);
+    }
+
+    @Transactional
     public void deactivate(UUID id) {
         ClientEntity entity = findEntityById(id);
         entity.setActive(false);
