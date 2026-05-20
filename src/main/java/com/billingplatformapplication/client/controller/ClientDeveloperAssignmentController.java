@@ -1,11 +1,13 @@
 package com.billingplatformapplication.client.controller;
 
 import com.billingplatformapplication.client.dto.request.AssignDeveloperRequestDto;
+import com.billingplatformapplication.client.dto.request.UpdateAssignmentDatesRequestDto;
 import com.billingplatformapplication.client.dto.response.ClientDeveloperAssignmentResponseDto;
 import com.billingplatformapplication.client.service.ClientDeveloperAssignmentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -30,6 +32,15 @@ public class ClientDeveloperAssignmentController {
             @PathVariable UUID clientId,
             @Valid @RequestBody AssignDeveloperRequestDto request) {
         return assignmentService.assign(clientId, request);
+    }
+
+    @PatchMapping("/{developerId}")
+    public ResponseEntity<ClientDeveloperAssignmentResponseDto> updateDates(
+            @PathVariable UUID clientId,
+            @PathVariable UUID developerId,
+            @RequestBody UpdateAssignmentDatesRequestDto request) {
+        return ResponseEntity.ok(
+                assignmentService.updateDates(clientId, developerId, request));
     }
 
     @DeleteMapping("/{developerId}")

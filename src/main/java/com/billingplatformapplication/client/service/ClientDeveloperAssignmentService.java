@@ -1,6 +1,7 @@
 package com.billingplatformapplication.client.service;
 
 import com.billingplatformapplication.client.dto.request.AssignDeveloperRequestDto;
+import com.billingplatformapplication.client.dto.request.UpdateAssignmentDatesRequestDto;
 import com.billingplatformapplication.client.dto.response.ClientDeveloperAssignmentResponseDto;
 import com.billingplatformapplication.client.entity.ClientDeveloperAssignmentEntity;
 import com.billingplatformapplication.client.entity.ClientEntity;
@@ -22,7 +23,7 @@ import java.util.UUID;
 public class ClientDeveloperAssignmentService {
 
     private final ClientDeveloperAssignmentRepository assignmentRepository;
-    private final ClientRepository clientRepository;
+    private final ClientRepository    clientRepository;
     private final DeveloperRepository developerRepository;
 
     @Transactional(readOnly = true)
@@ -43,12 +44,15 @@ public class ClientDeveloperAssignmentService {
         ClientEntity client = clientRepository.findById(clientId)
                 .orElseThrow(() -> new ResourceNotFoundException("Client", clientId));
         DeveloperEntity developer = developerRepository.findById(request.developerId())
-                .orElseThrow(() -> new ResourceNotFoundException("Developer", request.developerId()));
+                .orElseThrow(() -> new ResourceNotFoundException("Developer",
+                        request.developerId()));
 
         ClientDeveloperAssignmentEntity entity = ClientDeveloperAssignmentEntity.builder()
                 .client(client)
                 .developer(developer)
                 .notes(request.notes())
+                .startDate(request.startDate())
+                .endDate(request.endDate())
                 .active(true)
                 .build();
 
@@ -56,10 +60,24 @@ public class ClientDeveloperAssignmentService {
     }
 
     @Transactional
+    public ClientDeveloperAssignmentResponseDto updateDates(UUID clientId,
+                                                            UUID developerId,
+                                                            UpdateAssignmentDatesRequestDto request) {
+        ClientDeveloperAssignmentEntity entity =
+                assignmentRepository.findByClientAndDeveloper(clientId, developerId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Assignment",
+                                developerId));
+        entity.setStartDate(request.startDate());
+        entity.setEndDate(request.endDate());
+        return toDto(assignmentRepository.save(entity));
+    }
+
+    @Transactional
     public void unassign(UUID clientId, UUID developerId) {
         ClientDeveloperAssignmentEntity entity =
                 assignmentRepository.findByClientAndDeveloper(clientId, developerId)
-                        .orElseThrow(() -> new ResourceNotFoundException("Assignment", developerId));
+                        .orElseThrow(() -> new ResourceNotFoundException("Assignment",
+                                developerId));
         entity.setActive(false);
         assignmentRepository.save(entity);
     }
@@ -72,9 +90,12 @@ public class ClientDeveloperAssignmentService {
                 e.getDeveloper().getId(),
                 e.getDeveloper().getFullName(),
                 e.getDeveloper().getDocumentId(),
-                e.getDeveloper().getProfile() != null ? e.getDeveloper().getProfile().getName() : null,
+                e.getDeveloper().getProfile() != null
+                        ? e.getDeveloper().getProfile().getName() : null,
                 e.isActive(),
                 e.getNotes(),
+                e.getStartDate(),
+                e.getEndDate(),
                 e.getCreatedAt()
         );
     }

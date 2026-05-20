@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -112,6 +113,52 @@ public class BillingCalculationService {
         return assembleResult(clientId, year, month, lines);
     }
 
+    /**
+     * Calcula los dias efectivos del desarrollador en el mes.
+     * Si no tiene start_date ni end_date en el mes -> 20 dias completos.
+     * Si entra a mitad de mes -> proporcional desde start_date.
+     * Si sale a mitad de mes -> proporcional hasta end_date.
+     */
+    private BigDecimal calcularDiasEfectivos(ClientDeveloperAssignmentEntity assignment,
+                                             int year, int month) {
+        LocalDate primerDiaMes = LocalDate.of(year, month, 1);
+        LocalDate ultimoDiaMes = primerDiaMes.withDayOfMonth(
+                primerDiaMes.lengthOfMonth());
+
+        LocalDate inicio = assignment.getStartDate() != null
+                ? assignment.getStartDate() : primerDiaMes;
+        LocalDate fin    = assignment.getEndDate() != null
+                ? assignment.getEndDate() : ultimoDiaMes;
+
+        // Si el developer no estaba activo este mes
+        if (inicio.isAfter(ultimoDiaMes) || fin.isBefore(primerDiaMes)) {
+            return BigDecimal.ZERO;
+        }
+
+        // Ajustar al rango del mes
+        LocalDate inicioEfectivo = inicio.isBefore(primerDiaMes) ? primerDiaMes : inicio;
+        LocalDate finEfectivo    = fin.isAfter(ultimoDiaMes)     ? ultimoDiaMes  : fin;
+
+        // Dias calendario en el rango efectivo
+        long diasCalendario = inicioEfectivo.until(finEfectivo,
+                java.time.temporal.ChronoUnit.DAYS) + 1;
+        long totalDiasCalendario = primerDiaMes.until(ultimoDiaMes,
+                java.time.temporal.ChronoUnit.DAYS) + 1;
+
+        // Proporcionar sobre 20 dias habiles
+        BigDecimal proporcion = new BigDecimal(diasCalendario)
+                .divide(new BigDecimal(totalDiasCalendario), 6, RoundingMode.HALF_UP);
+
+        BigDecimal diasEfectivos = proporcion.multiply(DIAS_MES)
+                .setScale(2, RoundingMode.HALF_UP);
+
+        log.debug("Dias efectivos developer={} inicio={} fin={} dias={}/{}",
+                assignment.getDeveloper().getId(), inicioEfectivo, finEfectivo,
+                diasEfectivos, DIAS_MES);
+
+        return diasEfectivos;
+    }
+
     // ----------------------------------------------------------------
 
     private BillingLineDto calculateLine(ClientDeveloperAssignmentEntity assignment,
@@ -122,28 +169,27 @@ public class BillingCalculationService {
         UUID developerId = assignment.getDeveloper().getId();
         UUID clientId    = assignment.getClient().getId();
 
-        // Horas y días base — estándar colombiano o valor del work_log si existe
         BigDecimal horasBase;
         BigDecimal diasBase;
 
         if (workLog != null && workLog.getActualWorkedHours() != null) {
-            // Usa las horas reales del work_log (acuerdo con cliente)
             horasBase = workLog.getActualWorkedHours();
             BigDecimal horasPerDia = rate.getWorkingHoursPerDay() != null
-                    ? rate.getWorkingHoursPerDay() : new BigDecimal("8");
+                    ? rate.getWorkingHoursPerDay() : new BigDecimal("8.4");
             diasBase = horasBase.divide(horasPerDia, 2, RoundingMode.HALF_UP);
             log.debug("Usando work_log id={} horas={}", workLog.getId(), horasBase);
         } else {
-            // Estándar colombiano: 168h / 20 días
-            horasBase = HORAS_MES;
-            diasBase  = DIAS_MES;
-            log.debug("Usando base estándar 168h/21d para developer={}", developerId);
+            // Calcular dias proporcionales si hay start_date o end_date en el mes
+            BigDecimal diasEfectivos = calcularDiasEfectivos(assignment, year, month);
+            diasBase  = diasEfectivos;
+            horasBase = diasEfectivos.multiply(new BigDecimal("8.4"))
+                    .setScale(2, RoundingMode.HALF_UP);
+            log.debug("Usando base {}/20d para developer={} dias efectivos={}",
+                    horasBase, developerId, diasEfectivos);
         }
 
-        // Monto bruto según tipo de tarifa
         BigDecimal grossAmount = calcularBruto(rate, horasBase, diasBase);
 
-        // Novedades aprobadas del período para este developer+client
         List<BillingNoveltyEntity> novelties =
                 noveltyRepository.findApprovedByDeveloperAndPeriod(
                         developerId, clientId, year, month);

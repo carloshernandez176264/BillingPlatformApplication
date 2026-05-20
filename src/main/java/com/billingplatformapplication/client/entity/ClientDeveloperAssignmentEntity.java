@@ -1,11 +1,12 @@
 package com.billingplatformapplication.client.entity;
 
 import com.billingplatformapplication.developers.entity.DeveloperEntity;
-
 import com.billingplatformapplication.shared.domain.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "client_developer_assignments",
@@ -26,4 +27,10 @@ public class ClientDeveloperAssignmentEntity extends BaseEntity {
 
     @Column(length = 500)
     private String notes;
+
+    @Column(name = "start_date")
+    private LocalDate startDate;
+
+    @Column(name = "end_date")
+    private LocalDate endDate;
 }
