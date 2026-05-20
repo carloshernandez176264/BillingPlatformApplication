@@ -53,7 +53,7 @@ public class NoveltyDiscountCalculator {
 
     /**
      * Resuelve el valor de un día según la tarifa.
-     * Estándar colombiano: tarifa mensual / 21 días
+     * Estándar colombiano: tarifa mensual / 20 días
      */
     private BigDecimal resolveDailyRate(RateEntity rate) {
         // Si tiene tarifa diaria explícita, la usa directamente
@@ -70,7 +70,7 @@ public class NoveltyDiscountCalculator {
         // Estándar colombiano: tarifa mensual / 21 días laborales
         if (MoneyUtils.isPositive(rate.getMonthlyRate())) {
             return rate.getMonthlyRate()
-                    .divide(new BigDecimal("21"), 4, RoundingMode.HALF_UP);
+                    .divide(new BigDecimal("20"), 4, RoundingMode.HALF_UP);
         }
         return BigDecimal.ZERO;
     }
