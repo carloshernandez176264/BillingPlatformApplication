@@ -30,13 +30,13 @@ import java.util.UUID;
  *
  * Estándar colombiano:
  *   - 168 horas laborales / mes
- *   - 21 días laborales / mes
- *   - Valor día  = tarifa mensual / 21
+ *   - 20 días laborales / mes
+ *   - Valor día  = tarifa mensual / 20
  *   - Valor hora = tarifa mensual / 168
  *
  * El work_log es OPCIONAL:
  *   - Si existe → usa sus horas reales (permite ajuste por acuerdo con cliente)
- *   - Si no existe → usa la base estándar (168h / 21 días)
+ *   - Si no existe → usa la base estándar (168h / 20 días)
  *
  * Las novedades se descuentan siempre, con o sin work_log.
  */
@@ -47,7 +47,7 @@ public class BillingCalculationService {
 
     // Estándar colombiano
     private static final BigDecimal HORAS_MES  = new BigDecimal("168");
-    private static final BigDecimal DIAS_MES   = new BigDecimal("21");
+    private static final BigDecimal DIAS_MES   = new BigDecimal("20");
 
     private final ClientDeveloperAssignmentRepository assignmentRepository;
     private final WorkLogRepository                   workLogRepository;
@@ -134,7 +134,7 @@ public class BillingCalculationService {
             diasBase = horasBase.divide(horasPerDia, 2, RoundingMode.HALF_UP);
             log.debug("Usando work_log id={} horas={}", workLog.getId(), horasBase);
         } else {
-            // Estándar colombiano: 168h / 21 días
+            // Estándar colombiano: 168h / 20 días
             horasBase = HORAS_MES;
             diasBase  = DIAS_MES;
             log.debug("Usando base estándar 168h/21d para developer={}", developerId);
