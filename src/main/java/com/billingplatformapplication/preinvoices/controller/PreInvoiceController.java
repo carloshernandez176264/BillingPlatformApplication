@@ -90,6 +90,14 @@ public class PreInvoiceController {
         return ResponseEntity.ok(preInvoiceService.cancel(id, reason));
     }
 
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Eliminar pre-factura — solo DRAFT o CANCELLED")
+    @PreAuthorize("hasAuthority('GENERATE_PRE_INVOICE')")
+    @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable UUID id) {
+        preInvoiceService.delete(id);
+    }
+
     // ---- Export endpoints ----
 
     @GetMapping("/{id}/export/pdf")

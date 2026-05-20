@@ -173,6 +173,18 @@ public class PreInvoiceService {
         return entity;
     }
 
+    @Transactional
+    public void delete(UUID id) {
+        PreInvoiceEntity entity = findEntityById(id);
+        if (entity.getStatus() != PreInvoiceEntity.PreInvoiceStatus.DRAFT &&
+                entity.getStatus() != PreInvoiceEntity.PreInvoiceStatus.CANCELLED) {
+            throw new BusinessException(
+                    "Solo se pueden eliminar pre-facturas en estado BORRADOR o CANCELADA");
+        }
+        preInvoiceRepository.delete(entity);
+        auditService.log("PRE_INVOICE", id.toString(), "DELETE", currentUser(), null, null);
+    }
+
     private void requireStatusIn(PreInvoiceEntity entity,
                                  PreInvoiceEntity.PreInvoiceStatus... allowed) {
         for (PreInvoiceEntity.PreInvoiceStatus s : allowed) {
